@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+	package="com.zenarvus.termuxhome">
+
+    <uses-feature android:name="android.software.leanback" android:required="false"/>
+	<uses-feature android:name="android.hardware.touchscreen" android:required="false"/>
+
+	<application android:label="Termux:Home"
+		android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+		android:roundIcon="@mipmap/ic_launcher_round">
+	
+		<activity  android:name="com.zenarvus.termuxhome.MainActivity"
+			android:excludeFromRecents="true"
+			android:launchMode="singleTask"
+			android:theme="@android:style/Theme.Translucent">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.HOME"/>
+            </intent-filter>
+		</activity>
+	</application>
+
+</manifest>

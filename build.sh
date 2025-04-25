@@ -2,12 +2,13 @@
 
 # ----------- CONFIGURATION ----------- #
 PROJECT_STRUCTURE="com/zenarvus/termuxhome"
-MIN_SDK_VERSION=16
+MIN_SDK_VERSION=19
+TARGET_SDK_VERSION=31
+JAVAC_RELEASE=9
 # ----------- CONFIGURATION ----------- #
 
 #if no KS_PASSWORD argument is given, use "password"
 if [[ ! -n "$(echo $KS_PASSWORD)" ]]; then
-	echo "No password is given for the key store. Using the default one."
 	KS_PASSWORD="password"
 fi
 
@@ -32,6 +33,9 @@ mkdir $BUILD_DIR/build
 mkdir $BUILD_DIR/build/dex
 mkdir $BUILD_DIR/build/classes
 
+# Set the tools if they does not exists or in a specific architecture
+cpuArch=$(lscpu | grep Architecture | awk {'print $2'})
+
 # Begin compilation!
 echo -e "\e[33mRunning aapt2...\e[0m"
 aapt2 compile -v --dir $PROJECT_DIR/res -o $BUILD_DIR/build/resources.zip
@@ -47,17 +51,17 @@ aapt2 link -v \
   --java $BUILD_DIR/build/ \
   -o $BUILD_DIR/build/link.apk \
    $BUILD_DIR/build/resources.zip \
-   --auto-add-overlay
+   --auto-add-overlay --target-sdk-version $TARGET_SDK_VERSION --min-sdk-version $MIN_SDK_VERSION
 
 # This will compile our code to java bytecode
 # and place the .class files in build/classes
 # directory. Take note of the R.java file which
 # is the one that was generated in the previous step.
-# Without --release=9 nothing will work
+# Changin --release version other than 9 may cause issues.
 
 JAVA_FILE_LIST=$(find $PROJECT_DIR/java -type f -name \*.java)
 echo -e "\e[33mRunning $(javac --version)...\e[0m"
-javac --release=9 -verbose -d $BUILD_DIR/build/classes --class-path \
+javac --release=$JAVAC_RELEASE -verbose -d $BUILD_DIR/build/classes --class-path \
 	$BUILD_DIR/tools/android.jar \
 	$JAVA_FILE_LIST $BUILD_DIR/build/$PROJECT_STRUCTURE/R.java
 
@@ -79,6 +83,7 @@ javac --release=9 -verbose -d $BUILD_DIR/build/classes --class-path \
 #	--output=classes.dex $PROJECT_STRUCTURE/*.class \
 echo -e "\e[33mRunning d8...\e[0m"
 cd $BUILD_DIR/build/dex
+#java -cp r8.jar com.android.tools.r8.D8
 d8 --debug --classpath $BUILD_DIR/tools/android.jar \
        --output ./ \
        $(ls -1 $BUILD_DIR/build/classes/$PROJECT_STRUCTURE |\
@@ -109,20 +114,6 @@ if [[ ! -e "$PROJECT_DIR/key.keystore" ]]; then
 	keytool -genkeypair -keystore $PROJECT_DIR/key.keystore -keyalg RSA -storepass $KS_PASSWORD
 fi
 
-#KEYSTORE_DIR=".keystore"
-#KEY_PK8=${KEYSTORE_DIR}/key.pk8
-#X509_PEM=${KEYSTORE_DIR}/cert.x509.pem
-#REQ_PEM=${KEYSTORE_DIR}/req.pem
-#KEY_PEM=${KEYSTORE_DIR}/key.pem
-#if [ ! -f "$X509_PEM" ] ; then
-#	openssl genrsa -out $KEY_PEM 2048
-#	openssl req -new -key $KEY_PEM -out $REQ_PEM
-#	openssl x509 -req -days 10000 -in $REQ_PEM \
-#	-signkey $KEY_PEM -out $X509_PEM
-#	openssl pkcs8 -topk8 -outform DER -in $KEY_PEM \
-#	-inform PEM -out $KEY_PK8 -nocrypt
-#fi
-
 # And sign!
 echo -e "\e[33mRunning apksigner...\e[0m"
 apksigner sign \
@@ -130,12 +121,6 @@ apksigner sign \
   --ks $PROJECT_DIR/key.keystore \
   --ks-pass pass:$KS_PASSWORD \
   --out $BUILD_DIR/output.apk $BUILD_DIR/build/zipout.apk
-
-#apksigner sign \
-#  -in $BUILD_DIR/build/zipout.apk \
-#  -out $BUILD_DIR/output.apk \
-#  -key ../${KEY_PK8} \
-#  -cert ../${X509_PEM}
 
 # The output of this command is an apk final.apk.
 echo
